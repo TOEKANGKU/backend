@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Thread;
 use App\Models\ThreadInterest as Interest;
 use App\Models\ThreadProfesion as Profesion;
+use App\Models\ExperienceCategory;
 use \Auth;
 
 class ThreadController extends Controller
@@ -27,11 +28,18 @@ class ThreadController extends Controller
 	            'message' => $validator->errors()->all()[0],
 	        ], 422);
 	    }
+        $expCategory = ExperienceCategory::
+                    join('experiences', 'experiences.id', '=', 'experience_categories.experience_id')
+                    ->where('experiences.user_id', Auth::id())
+                    ->select('experience_categories.category')
+                    ->groupBy('experience_categories.category')
+                    ->pluck('experience_categories.category')->toArray();
 	    $valid = $validator->validated();
         $query = Thread::
                     join('thread_profesions', 'thread_profesions.thread_id', '=', 'threads.id')
                     ->leftJoin('thread_interests', 'thread_interests.thread_id', '=', 'threads.id')
                     ->join('users', 'threads.user_id', '=', 'users.id')
+                    ->join('thread_categories', 'threads.id', '=', 'thread_categories.thread_id')
                     ->leftJoin(DB::raw('(SELECT user_id, AVG(score) as rating FROM user_ratings GROUP BY user_id) as ratings'), function ($join) {
                         $join->on('users.id', '=', 'ratings.user_id');
                     })
@@ -55,10 +63,16 @@ class ThreadController extends Controller
                         'users.name as user_name',
                         DB::raw('ratings.rating as user_rating'),
                         DB::raw("string_agg(thread_profesions.profesion, ', ') as profesions"),
-                        DB::raw('count(thread_interests.id) as total_interest') 
+                        DB::raw('count(thread_interests.id) as total_interest'),
+                        DB::raw('thread_categories.category as category'),
                     )
-                    ->groupBy('threads.id', 'users.name', 'ratings.rating')
-                    ->orderBy('threads.created_at', 'DESC');
+                    ->groupBy('threads.id', 'users.name', 'ratings.rating', 'thread_categories.category');
+        if(count($expCategory)) {
+            $sort = "'" . implode("','", $expCategory) . "'";
+            $query = $query->orderByRaw('array_position(ARRAY(SELECT unnest(ARRAY['.$sort.']::text[])), thread_categories.category)');
+        } else {
+            $query = $query->orderBy('threads.created_at', 'DESC');
+        }
         $count = $query->get()->count(DB::raw('DISTINCT threads.id'));
         $data = $query->limit($valid['limit'])
                     ->offset($valid['offset'])

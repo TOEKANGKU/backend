@@ -14,10 +14,12 @@ use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\UserRating as Rating;
 use App\Models\Experience;
+use App\Models\ExperienceCategory;
 use App\Models\OtpCode;
 use App\Models\ForgotPassword;
 use App\Jobs\SendOTPJob;
 use App\Jobs\SendTokenResetJob;
+use App\Services\ModelService;
 use \Auth;
 
 class AuthController extends Controller
@@ -163,6 +165,13 @@ class AuthController extends Controller
             $experience->date = $pengalaman[$i]['tanggal'];
             $experience->description = $pengalaman[$i]['deskripsi'];
             $experience->save();
+
+            $model = ModelService::getUserClassify($experience->description);
+
+            $category = new ExperienceCategory;
+            $category->experience_id = $experience->id;
+            $category->category = $model;
+            $category->save();
         }
 
         return response()->json(['success' => true, 'message' => 'Berhasil melakukan pendaftaran']);

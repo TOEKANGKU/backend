@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Jobs\TestJob;
 use App\Services\FCMService;
+use App\Services\ModelService;
 
 /*
 |--------------------------------------------------------------------------
@@ -44,4 +45,17 @@ Route::post('send-notif', function (Request $request) {
 
 Route::post('run-artisan', function (Request $request) {
     Artisan::call('queue:work --stop-when-empty', []);
+});
+
+Route::post('classify', function (Request $request) {
+    $text = $request->text;
+    $type = $request->type ?? 'worker';
+    if($type) {
+        $response = ModelService::getWorkerClassify($text);
+    } else {
+        $response = ModelService::getUserClassify($text);
+    }
+
+    return response()->json(['success' => true, 'data' => $response]);
+
 });

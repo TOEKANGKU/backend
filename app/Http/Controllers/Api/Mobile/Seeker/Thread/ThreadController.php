@@ -7,8 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Models\Thread;
+use App\Models\ThreadCategory as Category;
 use App\Models\ThreadInterest as Interest;
 use App\Models\ThreadProfesion as Profesion;
+use App\Services\ModelService;
 use \Auth;
 
 class ThreadController extends Controller
@@ -227,6 +229,12 @@ class ThreadController extends Controller
             array_push($data, $body);
         }
         Profesion::insert($data);
+        $model = ModelService::getWorkerClassify($thread->description);
+		$category = new Category;
+		$category->thread_id = $thread->id;
+		$category->category = $model;
+		$category->save();
+
         return response()->json(['success' => true, 'message' => 'Berhasil membuat postingan']);
     }
     
@@ -290,6 +298,12 @@ class ThreadController extends Controller
         }
         Profesion::where('thread_id', $thread->id)->delete();
         Profesion::insert($data);
+        Category::where('thread_id', $valid['id'])->delete();
+        $model = ModelService::getWorkerClassify($thread->description);
+		$category = new Category;
+		$category->thread_id = $thread->id;
+		$category->category = $model;
+		$category->save();
         return response()->json(['success' => true, 'message' => 'Berhasil mengubah postingan']);
     }
     

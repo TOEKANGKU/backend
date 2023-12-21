@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Experience;
+use App\Models\ExperienceCategory;
+use App\Services\ModelService;
 use \Auth;
 
 class ExperienceController extends Controller
@@ -63,6 +65,13 @@ class ExperienceController extends Controller
         $experience->description = $valid['deskripsi'];
         $experience->save();
 
+		$model = ModelService::getUserClassify($experience->description);
+
+		$category = new ExperienceCategory;
+		$category->experience_id = $experience->id;
+		$category->category = $model;
+		$category->save();
+
         return response()->json(['success' => true, 'message' => 'Berhasil menambahkan pengalaman']);
     }
     
@@ -92,6 +101,14 @@ class ExperienceController extends Controller
         $experience->description = $valid['deskripsi'];
         $experience->save();
 
+		$model = ModelService::getUserClassify($experience->description);
+
+		ExperienceCategory::where('experience_id', $experience->id)->delete();
+		$category = new ExperienceCategory;
+		$category->experience_id = $experience->id;
+		$category->category = $model;
+		$category->save();
+
         return response()->json(['success' => true, 'message' => 'Berhasil mengubah pengalaman']);
     }
 
@@ -113,6 +130,7 @@ class ExperienceController extends Controller
 	            'message' => 'Pengalaman tidak ditemukan',
 	        ], 404);
         }
+		ExperienceCategory::where('experience_id', $valid['id'])->delete();
         $experience->delete();
 
         return response()->json(['success' => true, 'message' => 'Berhasil menghapus pengalaman']);
